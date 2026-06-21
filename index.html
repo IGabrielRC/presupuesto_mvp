@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VoiceBudget - Presupuestos al Instante</title>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  
+  <!-- APP CONTAINER (EDITOR MODE) -->
+  <div id="editor-container" class="app-layout">
+    
+    <!-- HEADER -->
+    <header class="app-header">
+      <div class="logo-area">
+        <span class="logo-icon">🎙️</span>
+        <h1>Voice<span class="text-gradient">Budget</span></h1>
+      </div>
+      <button id="btn-toggle-profile" class="btn-icon" title="Configurar Perfil de Empresa">⚙️ Perfil</button>
+    </header>
+
+    <!-- RECOVERY DRAFT BANNER -->
+    <div id="recovery-banner" class="card glass-panel hidden animate-slide-down" style="border: 1px dashed var(--color-accent); background: rgba(0, 191, 255, 0.05); gap: 12px; padding: 16px; margin-bottom: 10px;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 13px; font-weight: 500;">📋 Tenés un presupuesto borrador sin terminar.</span>
+        <button id="btn-recovery-close" class="btn-close" style="font-size: 18px;">&times;</button>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <button id="btn-recovery-load" class="btn btn-primary btn-small" style="flex: 1; background: linear-gradient(135deg, var(--color-accent) 0%, #0284c7 100%); box-shadow: 0 4px 10px var(--color-accent-glow);">Continuar editando</button>
+        <button id="btn-recovery-discard" class="btn btn-secondary btn-small" style="flex: 1;">Descartar</button>
+      </div>
+    </div>
+
+    <!-- MAIN BODY -->
+    <main class="app-main">
+      
+      <!-- PROFILE / TEMPLATE CONFIGURATION PANEL (COLLAPSIBLE) -->
+      <section id="profile-panel" class="card glass-panel hidden animate-slide-down">
+        <div class="panel-header">
+          <h3>Configuración de tu Empresa</h3>
+          <button id="btn-close-profile" class="btn-close">&times;</button>
+        </div>
+        <form id="profile-form" class="grid-form">
+          <div class="form-group col-full">
+            <label>Logo de la Empresa</label>
+            <div class="logo-inputs-wrapper">
+              <input type="file" id="company-logo-file" accept="image/*" class="file-input-styled">
+              <span class="text-muted or-divider">o también podés</span>
+              <input type="text" id="company-logo" placeholder="Pegar URL de la imagen (https://...)">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="company-name">Nombre de la Empresa / Tu Nombre</label>
+            <input type="text" id="company-name" required placeholder="Pinturas RG">
+          </div>
+          <div class="form-group">
+            <label for="company-phone">Teléfono de Contacto</label>
+            <input type="tel" id="company-phone" required placeholder="+54 11 9876-5432">
+          </div>
+          <div class="form-group">
+            <label for="company-email">Correo Electrónico</label>
+            <input type="email" id="company-email" required placeholder="contacto@reformas.com">
+          </div>
+          <div class="form-group">
+            <label for="company-address">Dirección Física</label>
+            <input type="text" id="company-address" placeholder="Av. Corrientes 1234, CABA">
+          </div>
+          <div class="form-group col-full">
+            <label for="company-terms">Términos y Condiciones por defecto</label>
+            <textarea id="company-terms" rows="2" placeholder="Validez del presupuesto: 15 días. 50% anticipo."></textarea>
+          </div>
+          <button type="submit" id="btn-save-profile" class="btn btn-primary col-full">Guardar Perfil</button>
+        </form>
+      </section>
+
+      <!-- AUDIO RECORDING SECTION -->
+      <section id="recording-section" class="card main-card glass-panel align-center">
+        <h2>Crear Presupuesto por Voz</h2>
+        <p class="subtitle text-muted">Mantené presionado o presioná para grabar la nota de voz detallando el trabajo.</p>
+        
+        <!-- Record Button & Visual Feedback -->
+        <div class="recorder-wrapper">
+          <button id="btn-record" class="btn-record-circle" aria-label="Grabar nota de voz">
+            <span class="mic-icon">🎤</span>
+            <div class="ripple-ring ring-1"></div>
+            <div class="ripple-ring ring-2"></div>
+          </button>
+          
+          <!-- Waveform Animation -->
+          <div id="waveform" class="waveform hidden">
+            <span class="bar"></span>
+            <span class="bar"></span>
+            <span class="bar"></span>
+            <span class="bar"></span>
+            <span class="bar"></span>
+            <span class="bar"></span>
+            <span class="bar"></span>
+            <span class="bar"></span>
+          </div>
+        </div>
+
+        <div class="recorder-actions">
+          <span id="recording-timer" class="timer text-muted">00:00</span>
+          <span id="recording-status" class="status-badge">Listo para grabar</span>
+          <input type="file" id="audio-file-upload" accept="audio/*" class="hidden">
+          <label for="audio-file-upload" class="btn-link">O subir archivo de audio</label>
+        </div>
+      </section>
+
+      <!-- STATUS LOADER -->
+      <div id="processing-loader" class="loader-overlay hidden">
+        <div class="spinner-container">
+          <div class="spinner"></div>
+          <p id="loader-message">Procesando audio con Gemini 1.5 Flash...</p>
+        </div>
+      </div>
+
+      <!-- EDITABLE BUDGET SECTION -->
+      <section id="budget-editor-section" class="card budget-card glass-panel hidden animate-fade-in">
+        
+        <div class="editor-title-row">
+          <h2>Editar Presupuesto</h2>
+          <button id="btn-re-record" class="btn btn-secondary btn-small">🎤 Grabar de nuevo</button>
+        </div>
+        
+        <!-- Client Details -->
+        <div class="budget-meta-inputs">
+          <h3>Detalles del Cliente</h3>
+          <div class="grid-form">
+            <div class="form-group">
+              <label for="client-name">Cliente</label>
+              <input type="text" id="client-name" placeholder="Nombre del cliente">
+            </div>
+            <div class="form-group">
+              <label for="client-phone">Teléfono</label>
+              <input type="tel" id="client-phone" placeholder="Celular">
+            </div>
+            <div class="form-group">
+              <label for="client-email">Email</label>
+              <input type="email" id="client-email" placeholder="Correo">
+            </div>
+          </div>
+        </div>
+
+        <hr class="divider">
+
+        <!-- Budget Table -->
+        <div class="table-responsive">
+          <table id="editor-items-table" class="budget-table">
+            <thead>
+              <tr>
+                <th width="50%">Descripción del Material / Servicio</th>
+                <th width="15%" class="text-right">Cant.</th>
+                <th width="15%" class="text-right">P. Unitario</th>
+                <th width="15%" class="text-right">Total</th>
+                <th width="5%" class="text-center"></th>
+              </tr>
+            </thead>
+            <tbody id="editor-items-body">
+              <!-- JS will inject items here -->
+            </tbody>
+          </table>
+        </div>
+
+        <button id="btn-add-item" class="btn btn-secondary btn-small">+ Agregar Ítem</button>
+
+        <!-- Totals Panel -->
+        <div class="totals-panel">
+          <div class="totals-row">
+            <span>Subtotal:</span>
+            <strong id="val-subtotal">$ 0,00</strong>
+          </div>
+          <div class="totals-row">
+            <span>IVA (<input type="number" id="val-tax-rate" value="21" min="0" max="100">%):</span>
+            <strong id="val-tax-amount">$ 0,00</strong>
+          </div>
+          <div class="totals-row total-highlight">
+            <span>TOTAL:</span>
+            <strong id="val-total">$ 0,00</strong>
+          </div>
+        </div>
+
+        <hr class="divider">
+
+        <!-- Action Bar -->
+        <div class="editor-actions">
+          <button id="btn-save-share" class="btn btn-primary">💾 Guardar y Crear Link</button>
+          <button id="btn-download-pdf-local" class="btn btn-secondary">📥 Descargar PDF</button>
+        </div>
+
+        <!-- Share Result Links -->
+        <div id="share-panel" class="share-panel hidden animate-slide-down">
+          <p class="success-message">¡Presupuesto guardado con éxito!</p>
+          <div class="share-box">
+            <input type="text" id="share-link-input" readonly>
+            <button id="btn-copy-link" class="btn btn-small">Copiar</button>
+          </div>
+          <div class="share-buttons-grid">
+            <button id="btn-share-whatsapp" class="btn btn-whatsapp">💬 Compartir por WhatsApp</button>
+            <button id="btn-share-email" class="btn btn-email">✉️ Enviar por Email</button>
+          </div>
+        </div>
+
+      </section>
+
+    </main>
+  </div>
+
+  <!-- CLIENT VIEW CONTAINER (READ-ONLY VIEWER MODE) -->
+  <div id="viewer-container" class="client-viewer-layout hidden">
+    
+    <!-- Printable Budget Canvas -->
+    <div id="printable-budget-canvas" class="invoice-container">
+      
+      <!-- Invoice Header -->
+      <div class="invoice-header">
+        <div class="emitter-logo-wrapper">
+          <img id="view-company-logo" src="" alt="Logo" class="invoice-logo hidden">
+          <div id="view-company-logo-placeholder" class="logo-placeholder">🏢</div>
+        </div>
+        <div class="emitter-info">
+          <h2 id="view-company-name">Nombre de Empresa</h2>
+          <p id="view-company-address" class="text-muted">Dirección</p>
+          <p class="text-muted">Tel: <span id="view-company-phone">-</span> | Email: <span id="view-company-email">-</span></p>
+        </div>
+      </div>
+
+      <hr class="invoice-divider">
+
+      <!-- Invoice Meta Details -->
+      <div class="invoice-details-grid">
+        <div class="details-col">
+          <span class="details-label">PRESUPUESTO PARA:</span>
+          <strong id="view-client-name">Cliente</strong>
+          <p id="view-client-phone" class="text-muted">-</p>
+          <p id="view-client-email" class="text-muted">-</p>
+        </div>
+        <div class="details-col text-right">
+          <span class="details-label">NRO. PRESUPUESTO</span>
+          <strong id="view-budget-number">#00000</strong>
+          <p class="text-muted">Fecha: <span id="view-budget-date">dd/mm/aaaa</span></p>
+          <span id="view-status-tag" class="status-tag">Borrador</span>
+        </div>
+      </div>
+
+      <!-- Invoice Table -->
+      <table class="invoice-table">
+        <thead>
+          <tr>
+            <th align="left">Detalle del Servicio / Material</th>
+            <th align="right" width="10%">Cant.</th>
+            <th align="right" width="20%">P. Unitario</th>
+            <th align="right" width="20%">Total</th>
+          </tr>
+        </thead>
+        <tbody id="view-items-body">
+          <!-- JS will inject items here -->
+        </tbody>
+      </table>
+
+      <!-- Invoice Totals -->
+      <div class="invoice-totals-wrapper">
+        <div class="invoice-totals-table">
+          <div class="totals-line">
+            <span>Subtotal:</span>
+            <span id="view-subtotal">$0,00</span>
+          </div>
+          <div class="totals-line">
+            <span>IVA (<span id="view-tax-percentage">21</span>%):</span>
+            <span id="view-tax-amount">$0,00</span>
+          </div>
+          <div class="totals-line invoice-grand-total">
+            <span>TOTAL:</span>
+            <span id="view-total">$0,00</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Terms and Signatures -->
+      <div class="invoice-footer">
+        <div class="terms-section">
+          <h4>Condiciones del Trabajo</h4>
+          <p id="view-company-terms">Términos y condiciones por defecto...</p>
+        </div>
+        <div class="signature-section">
+          <div class="signature-line"></div>
+          <p>Firma de Conformidad</p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Floating Actions Panel -->
+    <div class="viewer-actions-bar">
+      <button id="btn-viewer-download" class="btn btn-primary">📥 Descargar PDF Oficial</button>
+      <button id="btn-viewer-back-editor" class="btn btn-secondary hidden">✏️ Volver al Editor</button>
+    </div>
+
+  </div>
+
+  <!-- HTML2PDF CDN DEPENDENCY -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  
+  <!-- APP MAIN CODE -->
+  <script type="module" src="/src/app.js"></script>
+
+</body>
+</html>

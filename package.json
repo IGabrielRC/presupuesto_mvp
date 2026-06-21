@@ -1,0 +1,20 @@
+{
+  "name": "voice-to-budget",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "start": "node server.js",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.43.4",
+    "express": "^4.19.2",
+    "html2pdf.js": "^0.10.1"
+  },
+  "devDependencies": {
+    "vite": "^5.2.11"
+  }
+}
